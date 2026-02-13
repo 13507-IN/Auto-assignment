@@ -1,12 +1,25 @@
 import { Configuration, OpenAIApi } from 'openai';
-import { supabase } from './supabase';
-import { StudyPlan } from './supabase';
+import { convexHttp, api } from '@/lib/convexHttp';
 import { getUpcomingAssignments } from './google-classroom';
+import type { Id } from '@convex/_generated/dataModel';
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
+
+export type StudyPlan = {
+  id?: string;
+  user_id?: string;
+  title: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  priority?: 'low' | 'medium' | 'high' | null;
+  status?: 'pending' | 'in_progress' | 'completed' | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
 interface TimeSlot {
   start: Date;
@@ -18,14 +31,6 @@ export async function generateStudyPlan(userId: string): Promise<StudyPlan[]> {
     // Get upcoming assignments
     const assignments = await getUpcomingAssignments(userId);
     
-    // Get user's calendar events for the next 7 days
-    const { data: calendarEvents } = await supabase
-      .from('classroom_data')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('due_date', new Date().toISOString())
-      .lte('due_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
-
     // Generate study plan using OpenAI
     const prompt = `Create a personalized study plan for the following assignments:
 ${assignments.map(a => `- ${a.assignment_title} (Due: ${new Date(a.due_date!).toLocaleDateString()})`).join('\n')}
@@ -63,17 +68,17 @@ Format the response as a JSON array of study sessions, each with:
 
     const studyPlan = JSON.parse(completion.data.choices[0].message?.content || '[]');
 
-    // Save study plan to database
-    const { error } = await supabase
-      .from('study_plans')
-      .insert(
-        studyPlan.map((plan: any) => ({
-          ...plan,
-          user_id: userId,
-        }))
-      );
-
-    if (error) throw error;
+    await convexHttp.mutation(api.studyPlans.createMany, {
+      user_id: userId,
+      plans: studyPlan.map((plan: StudyPlan) => ({
+        title: plan.title,
+        description: plan.description ?? undefined,
+        start_date: plan.start_date,
+        end_date: plan.end_date,
+        priority: plan.priority ?? undefined,
+        status: plan.status ?? 'pending',
+      })),
+    });
 
     return studyPlan;
   } catch (error) {
@@ -82,15 +87,24 @@ Format the response as a JSON array of study sessions, each with:
   }
 }
 
-export async function updateStudyPlan(userId: string, planId: string, updates: Partial<StudyPlan>) {
+export async function updateStudyPlan(
+  userId: string,
+  planId: string,
+  updates: Partial<StudyPlan>
+) {
   try {
-    const { error } = await supabase
-      .from('study_plans')
-      .update(updates)
-      .eq('id', planId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    await convexHttp.mutation(api.studyPlans.update, {
+      id: planId as Id<'study_plans'>,
+      user_id: userId,
+      updates: {
+        title: updates.title,
+        description: updates.description ?? undefined,
+        start_date: updates.start_date,
+        end_date: updates.end_date,
+        priority: updates.priority ?? undefined,
+        status: updates.status ?? undefined,
+      },
+    });
     return { success: true };
   } catch (error) {
     console.error('Error updating study plan:', error);
@@ -100,17 +114,11 @@ export async function updateStudyPlan(userId: string, planId: string, updates: P
 
 export async function getCurrentStudyPlan(userId: string) {
   try {
-    const { data, error } = await supabase
-      .from('study_plans')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('end_date', new Date().toISOString())
-      .order('start_date', { ascending: true });
-
-    if (error) throw error;
-    return data;
+    return await convexHttp.query(api.studyPlans.listCurrentByUser, {
+      user_id: userId,
+    });
   } catch (error) {
     console.error('Error fetching current study plan:', error);
     return [];
   }
-} 
+}

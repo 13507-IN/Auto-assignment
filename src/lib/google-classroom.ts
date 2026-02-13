@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
-import { supabase } from './supabase';
-import { ClassroomData } from './supabase';
+import { convexHttp, api } from '@/lib/convexHttp';
 import { Assignment } from '@/types/assignment';
 
 const classroom = google.classroom('v1');
@@ -35,52 +34,44 @@ export async function syncClassroomData(userId: string, accessToken: string) {
 
       // Process each assignment
       for (const assignment of courseWorkResponse.data.courseWork) {
-        // Check if assignment already exists
-        const { data: existingAssignment } = await supabase
-          .from('classroom_data')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('assignment_id', assignment.id)
-          .single();
+        const dueDate = assignment.dueDate
+          ? new Date(
+              assignment.dueDate.year!,
+              assignment.dueDate.month! - 1,
+              assignment.dueDate.day!
+            ).toISOString()
+          : undefined;
 
-        if (!existingAssignment) {
-          // Create new assignment record
-          const { error } = await supabase.from('classroom_data').insert({
-            user_id: userId,
-            course_id: course.id!,
-            course_name: course.name!,
-            assignment_id: assignment.id!,
-            assignment_title: assignment.title!,
-            due_date: assignment.dueDate ? new Date(assignment.dueDate.year!, assignment.dueDate.month! - 1, assignment.dueDate.day!).toISOString() : null,
-            description: assignment.description || null,
+        await convexHttp.mutation(api.classroomData.insertIfMissing, {
+          user_id: userId,
+          course_id: course.id!,
+          course_name: course.name!,
+          assignment_id: assignment.id!,
+          assignment_title: assignment.title!,
+          due_date: dueDate,
+          description: assignment.description || undefined,
+        });
+
+        // Create calendar event for assignment
+        if (assignment.dueDate) {
+          const event = {
+            summary: `${course.name} - ${assignment.title}`,
+            description: assignment.description || '',
+            start: {
+              dateTime: dueDate!,
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: dueDate!,
+              timeZone: 'UTC',
+            },
+          };
+
+          await calendar.events.insert({
+            auth,
+            calendarId: 'primary',
+            requestBody: event,
           });
-
-          if (error) {
-            console.error('Error inserting assignment:', error);
-            continue;
-          }
-
-          // Create calendar event for assignment
-          if (assignment.dueDate) {
-            const event = {
-              summary: `${course.name} - ${assignment.title}`,
-              description: assignment.description || '',
-              start: {
-                dateTime: new Date(assignment.dueDate.year!, assignment.dueDate.month! - 1, assignment.dueDate.day!).toISOString(),
-                timeZone: 'UTC',
-              },
-              end: {
-                dateTime: new Date(assignment.dueDate.year!, assignment.dueDate.month! - 1, assignment.dueDate.day!).toISOString(),
-                timeZone: 'UTC',
-              },
-            };
-
-            await calendar.events.insert({
-              auth,
-              calendarId: 'primary',
-              requestBody: event,
-            });
-          }
         }
       }
     }

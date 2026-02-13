@@ -1,6 +1,5 @@
 import axios from 'axios';
-import { supabase } from './supabase';
-import { Notification } from './supabase';
+import { convexHttp, api } from '@/lib/convexHttp';
 import { getCurrentStudyPlan } from './study-planner';
 
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v17.0';
@@ -47,7 +46,7 @@ export async function sendStudyPlanReminder(userId: string, phoneNumber: string)
 
     if (result.success) {
       // Log notification
-      await supabase.from('notifications').insert({
+      await convexHttp.mutation(api.notifications.create, {
         user_id: userId,
         type: 'study_plan',
         message,
@@ -65,13 +64,13 @@ export async function sendStudyPlanReminder(userId: string, phoneNumber: string)
 
 export async function sendAssignmentReminder(userId: string, phoneNumber: string) {
   try {
-    const { data: assignments } = await supabase
-      .from('classroom_data')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('due_date', new Date().toISOString())
-      .order('due_date', { ascending: true })
-      .limit(1);
+    const assignments = await convexHttp.query(
+      api.classroomData.listUpcomingByUser,
+      {
+        user_id: userId,
+        limit: 1,
+      }
+    );
 
     if (!assignments?.length) {
       return { success: false, error: 'No upcoming assignments found' };
@@ -84,7 +83,7 @@ export async function sendAssignmentReminder(userId: string, phoneNumber: string
 
     if (result.success) {
       // Log notification
-      await supabase.from('notifications').insert({
+      await convexHttp.mutation(api.notifications.create, {
         user_id: userId,
         type: 'assignment',
         message,
@@ -115,7 +114,7 @@ export async function handleWhatsAppWebhook(body: any) {
     const messageText = message.text.body;
 
     // Store the incoming message
-    await supabase.from('chat_history').insert({
+    await convexHttp.mutation(api.chatHistory.insert, {
       user_id: phoneNumber, // Using phone number as user_id for now
       message: messageText,
       response: 'Processing your message...',
@@ -130,11 +129,11 @@ export async function handleWhatsAppWebhook(body: any) {
     await sendWhatsAppMessage(phoneNumber, response);
 
     // Update chat history with the response
-    await supabase
-      .from('chat_history')
-      .update({ response })
-      .eq('user_id', phoneNumber)
-      .eq('message', messageText);
+    await convexHttp.mutation(api.chatHistory.updateResponse, {
+      user_id: phoneNumber,
+      message: messageText,
+      response,
+    });
 
     return { success: true };
   } catch (error) {

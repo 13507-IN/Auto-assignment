@@ -5,7 +5,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@google-cloud/local-auth', 'googleapis'],
   },
   webpack: (config, { isServer, webpack }) => {
-    // Client-side specific fallbacks
+    // Client-side specific fallbacks and polyfills
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -15,7 +15,7 @@ const nextConfig = {
         tls: false,
         dns: false,
         child_process: false,
-        
+
         // Polyfilled modules
         events: require.resolve('events/'),
         stream: require.resolve('stream-browserify'),
@@ -28,33 +28,28 @@ const nextConfig = {
         vm: require.resolve('vm-browserify'),
         querystring: require.resolve('querystring-es3'),
       };
-    }
 
-    // Handle node: protocol aliases
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      // Critical aliases
-      'node:events': 'events',
-      'node:path': 'path-browserify',
-      'node:crypto': 'crypto-browserify',
-      'node:stream': 'stream-browserify',
-      'node:buffer': 'buffer',
-      
-      // Optional - only alias what you actually use
-      ...(isServer ? {} : {
+      // Handle node: protocol aliases for the client bundle only
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'node:events': 'events',
+        'node:path': 'path-browserify',
+        'node:crypto': 'crypto-browserify',
+        'node:stream': 'stream-browserify',
+        'node:buffer': 'buffer',
         'node:fs': false,
         'node:net': false,
-        'node:tls': false
-      })
-    };
+        'node:tls': false,
+      };
 
-    // Add polyfills
-    config.plugins.push(
-      new webpack.ProvidePlugin({
-        process: 'process/browser',
-        Buffer: ['buffer', 'Buffer'],
-      })
-    );
+      // Add browser polyfills for the client bundle only
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          process: 'process/browser',
+          Buffer: ['buffer', 'Buffer'],
+        })
+      );
+    }
 
     return config;
   },

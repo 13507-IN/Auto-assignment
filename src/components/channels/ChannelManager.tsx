@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ChannelHierarchy, User } from '@/types/channel';
-import { getChannelHierarchy, createChannel } from '@/lib/supabase';
+import { getChannelHierarchy, createChannel } from '@/lib/channels';
 import { useSession } from 'next-auth/react';
 
 interface ChannelManagerProps {

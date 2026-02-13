@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import { supabase } from '@/lib/supabase';
+import { convexHttp, api } from '@/lib/convexHttp';
 
 const handler = NextAuth({
   providers: [
@@ -18,24 +18,12 @@ const handler = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
         try {
-          // Check if user exists in profiles table
-          const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-          if (!existingProfile) {
-            // Create new profile
-            const { error } = await supabase.from('profiles').insert({
-              id: user.id,
-              email: user.email!,
-              full_name: user.name,
-              role: 'student', // Default role
-            });
-
-            if (error) throw error;
-          }
+          await convexHttp.mutation(api.profiles.createIfMissing, {
+            user_id: user.id,
+            email: user.email!,
+            full_name: user.name ?? undefined,
+            role: 'student',
+          });
 
           return true;
         } catch (error) {
@@ -54,7 +42,17 @@ const handler = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (account && user) {
-        token.role = user.role;
+        const profile = await convexHttp.query(api.profiles.getByUserId, {
+          user_id: user.id,
+        });
+        token.role = profile?.role ?? 'student';
+      } else if (!token.role && token.sub) {
+        const profile = await convexHttp.query(api.profiles.getByUserId, {
+          user_id: token.sub,
+        });
+        if (profile?.role) {
+          token.role = profile.role;
+        }
       }
       return token;
     },

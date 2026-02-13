@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { processIdCard } from '@/lib/google-vision';
-import { supabase } from '@/lib/supabase';
-import { VerificationResult } from '@/types/id-verification';
+import { convexHttp, api } from '@/lib/convexHttp';
+import type { Id } from '@convex/_generated/dataModel';
 
 export async function POST(request: Request) {
     try {
@@ -30,12 +30,28 @@ export async function POST(request: Request) {
             return NextResponse.json(result, { status: 400 });
         }
 
+        if (
+            !result.extracted_data.student_id ||
+            !result.extracted_data.name ||
+            !result.extracted_data.college_name
+        ) {
+            return NextResponse.json(
+                {
+                    ...result,
+                    success: false,
+                    error: 'Missing required fields from ID verification',
+                },
+                { status: 400 }
+            );
+        }
+
         // Verify against database
-        const { data: college } = await supabase
-            .from('colleges')
-            .select('id')
-            .ilike('name', result.extracted_data.college_name || '')
-            .single();
+        const college = await convexHttp.query(
+            api.idVerification.findCollegeByName,
+            {
+                name: result.extracted_data.college_name || '',
+            }
+        );
 
         if (!college) {
             return NextResponse.json({
@@ -46,44 +62,50 @@ export async function POST(request: Request) {
         }
 
         // Check if student ID exists
-        const { data: existingCard } = await supabase
-            .from('student_id_cards')
-            .select('*')
-            .eq('student_id', result.extracted_data.student_id)
-            .single();
+        const existingCard = await convexHttp.query(
+            api.idVerification.getStudentIdCardByStudentId,
+            { student_id: result.extracted_data.student_id }
+        );
+
+        let studentCardId: Id<'student_id_cards'> | undefined =
+            existingCard?._id as Id<'student_id_cards'> | undefined;
 
         if (existingCard) {
             // Update existing card if needed
             if (existingCard.user_id !== session.user.id) {
-                await supabase
-                    .from('student_id_cards')
-                    .update({
+                await convexHttp.mutation(
+                    api.idVerification.updateStudentIdCard,
+                    {
+                        id: existingCard._id as Id<'student_id_cards'>,
                         user_id: session.user.id,
                         verification_status: true,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('id', existingCard.id);
+                    }
+                );
             }
         } else {
             // Create new card
-            await supabase.from('student_id_cards').insert([{
-                user_id: session.user.id,
-                student_id: result.extracted_data.student_id,
-                college_id: college.id,
-                full_name: result.extracted_data.name,
-                image_url: image, // Store base64 image
-                verification_status: true,
-            }]);
+            const newCard = await convexHttp.mutation(
+                api.idVerification.createStudentIdCard,
+                {
+                    user_id: session.user.id,
+                    student_id: result.extracted_data.student_id,
+                    college_id: college._id as Id<'colleges'>,
+                    full_name: result.extracted_data.name,
+                    image_url: image, // Store base64 image
+                    verification_status: true,
+                }
+            );
+            studentCardId = newCard?._id as Id<'student_id_cards'> | undefined;
         }
 
         // Log verification attempt
-        await supabase.from('id_verification_logs').insert([{
+        await convexHttp.mutation(api.idVerification.createVerificationLog, {
             user_id: session.user.id,
-            student_id_card_id: existingCard?.id,
+            student_id_card_id: studentCardId,
             verification_status: true,
             confidence_score: result.confidence_score,
             extracted_data: result.extracted_data,
-        }]);
+        });
 
         return NextResponse.json(result);
     } catch (error) {

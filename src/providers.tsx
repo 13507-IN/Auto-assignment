@@ -1,7 +1,14 @@
-  // providers.tsx
-  "use client";
-  import { SessionProvider } from "next-auth/react";
+// providers.tsx
+"use client";
 
-  export function Providers({ children }: { children: React.ReactNode }) {
-    return <SessionProvider>{children}</SessionProvider>;
-  }
+import { ConvexProvider } from "convex/react";
+import { SessionProvider } from "next-auth/react";
+import { convexReact } from "@/lib/convexReact";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <ConvexProvider client={convexReact}>{children}</ConvexProvider>
+    </SessionProvider>
+  );
+}
