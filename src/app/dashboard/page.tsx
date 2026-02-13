@@ -1,238 +1,121 @@
 'use client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiBook, FiCalendar, FiMessageSquare, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
+
 import { useSession } from 'next-auth/react';
+import { FiUsers, FiAward, FiCalendar } from 'react-icons/fi';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export default function Dashboard() {
-  const { data: session, status } = useSession();
-
-  // Mock data - replace with your actual data fetching
-  const studyPlan = [
-    { id: '1', title: 'Mathematics Revision', progress: 65, dueDate: '2023-12-15', priority: 'high' },
-    { id: '2', title: 'Literature Essay', progress: 30, dueDate: '2023-12-18', priority: 'medium' },
-  ];
-
-  const assignments = [
-    { id: '1', title: 'Linear Algebra Homework', dueDate: '2023-12-12', course: 'Mathematics' },
-    { id: '2', title: 'Macbeth Analysis', dueDate: '2023-12-14', course: 'Literature' },
-  ];
+  const { data: session } = useSession();
 
   const stats = [
-    { label: 'Completed Tasks', value: 12, icon: <FiCheckCircle className="text-emerald-400" /> },
-    { label: 'Pending Assignments', value: 5, icon: <FiAlertTriangle className="text-amber-400" /> },
+    { label: 'Total Students', value: '156', change: '+12%', icon: FiUsers, color: 'text-primary' },
+    { label: 'Average Grade', value: '87%', change: '+2.4%', icon: FiAward, color: 'text-green-500' },
+    { label: 'Upcoming Events', value: '8', change: 'Next: Math Final', icon: FiCalendar, color: 'text-blue-500' },
   ];
 
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent"
-        />
-      </div>
-    );
-  }
+  const recentActivity = [
+    { id: 1, user: 'Alex Morgan', action: 'submitted', target: 'Linear Algebra Assignment', time: '2 mins ago' },
+    { id: 2, user: 'Sarah Lee', action: 'joined', target: 'Physics 101', time: '15 mins ago' },
+    { id: 3, user: 'System', action: 'generated', target: 'Weekly Report', time: '1 hour ago' },
+    { id: 4, user: 'James Chen', action: 'flagged', target: 'Attendance Issue', time: '2 hours ago' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
-          >
-            StudyFlow AI
-          </motion.h1>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-gray-400">Welcome back</p>
-              
-            </div>
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center"
-            >
-              <span className="font-medium text-sm">
-                {session?.user?.name?.charAt(0) || 'S'}
-              </span>
-            </motion.div>
-          </div>
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
+          <p className="text-muted-foreground mt-1">
+            Overview of student performance and system activities.
+          </p>
         </div>
-      </header>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline">Download Report</Button>
+          <Button>New Notification</Button>
+        </div>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Stats Cards */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-        >
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + index * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">{stat.label}</p>
-                  <p className="text-3xl font-bold mt-2">{stat.value}</p>
-                </div>
-                <div className="text-3xl">
-                  {stat.icon}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => (
+          <Card key={stat.label}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.label}
+              </CardTitle>
+              <stat.icon className={`h-4 w-4 ${stat.color} opacity-75`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.change}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Study Plan Column */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="lg:col-span-2 space-y-6"
-          >
-            <h2 className="flex items-center text-xl font-bold">
-              <FiBook className="mr-2 text-blue-400" /> Your Study Plan
-            </h2>
-            
-            <AnimatePresence>
-              {studyPlan.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-lg">{item.title}</h3>
-                      <p className="text-sm text-gray-400 mt-1">Due {item.dueDate}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      item.priority === 'high' 
-                        ? 'bg-red-900/50 text-red-400' 
-                        : 'bg-amber-900/50 text-amber-400'
-                    }`}>
-                      {item.priority}
+      {/* Main Content Areas */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        
+        {/* Performance Chart Placeholder (60% width -> col-span-4 of 7) */}
+        <Card className="col-span-4 md:col-span-2 lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Performance Analytics</CardTitle>
+            <CardDescription>
+              Average grade trends over the current semester.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+             {/* Simple visual placeholder for chart */}
+             <div className="h-[300px] flex items-end justify-between gap-2 px-4 pt-4 pb-2">
+                {[45, 60, 75, 50, 80, 70, 85, 90, 65, 75, 85, 95].map((h, i) => (
+                  <div key={i} className="w-full bg-primary/10 rounded-t-sm hover:bg-primary/20 transition-all relative group h-full flex flex-col justify-end">
+                    <div 
+                      style={{ height: `${h}%` }} 
+                      className="bg-primary w-full rounded-t-sm transition-all duration-500 ease-spring-custom group-hover:bg-primary/90"
+                    />
+                  </div>
+                ))}
+             </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity (40% width -> col-span-3 of 7) */}
+        <Card className="col-span-3 md:col-span-2 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>
+              Latest actions across the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center">
+                  <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center border border-border shrink-0">
+                    <span className="text-xs font-medium text-foreground">
+                      {activity.user.charAt(0)}
                     </span>
                   </div>
-                  
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Progress</span>
-                      <span>{item.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2.5">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.progress}%` }}
-                        transition={{ duration: 0.8 }}
-                        className={`h-2.5 rounded-full ${
-                          item.progress > 70 ? 'bg-emerald-500' : 
-                          item.progress > 40 ? 'bg-blue-500' : 'bg-amber-500'
-                        }`}
-                      />
-                    </div>
+                  <div className="ml-4 space-y-1">
+                    <p className="text-sm font-medium leading-none text-foreground">
+                      {activity.user}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.action} <span className="text-foreground font-medium">{activity.target}</span>
+                    </p>
                   </div>
-                </motion.div>
+                  <div className="ml-auto font-medium text-xs text-muted-foreground whitespace-nowrap">
+                    {activity.time}
+                  </div>
+                </div>
               ))}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Right Sidebar */}
-          <div className="space-y-6">
-            {/* Upcoming Assignments */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <h2 className="flex items-center text-xl font-bold">
-                <FiCalendar className="mr-2 text-purple-400" /> Upcoming Assignments
-              </h2>
-              
-              <div className="mt-4 space-y-4">
-                <AnimatePresence>
-                  {assignments.map((assignment, index) => (
-                    <motion.div
-                      key={assignment.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      whileHover={{ x: 5 }}
-                      className="bg-gray-800 p-4 rounded-lg border border-gray-700"
-                    >
-                      <h3 className="font-medium">{assignment.title}</h3>
-                      <div className="flex justify-between mt-2 text-sm text-gray-400">
-                        <span>{assignment.course}</span>
-                        <span>Due {assignment.dueDate}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-
-            {/* AI Assistant */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg"
-            >
-              <h2 className="flex items-center text-xl font-bold mb-4">
-                <FiMessageSquare className="mr-2 text-blue-400" /> AI Study Assistant
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    <FiMessageSquare className="text-white" />
-                  </div>
-                  <div className="bg-gray-700 px-4 py-3 rounded-lg max-w-[80%]">
-                    <p>Hi {session?.user?.name?.split(' ')[0] || 'there'}! How can I help with your studies today?</p>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                    Explain calculus
-                  </button>
-                  <button className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                    Create quiz
-                  </button>
-                </div>
-                
-                <div className="relative mt-4">
-                  <input
-                    type="text"
-                    placeholder="Ask me anything..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-400 hover:text-blue-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </main>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

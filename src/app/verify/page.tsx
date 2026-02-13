@@ -1,3 +1,4 @@
+'use client';
 import { IdCardScanner } from '@/components/id-verification/IdCardScanner';
 import { VerificationResult } from '@/types/id-verification';
 import { useRouter } from 'next/navigation';

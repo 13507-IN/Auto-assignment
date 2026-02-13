@@ -15,9 +15,9 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
     delay = 0,
 }) => {
     const priorityColors = {
-        low: 'border-secondary-200 dark:border-secondary-800',
-        medium: 'border-primary-200 dark:border-primary-800',
-        high: 'border-red-200 dark:border-red-800',
+        low: 'border-border',
+        medium: 'border-primary',
+        high: 'border-destructive',
     };
 
     const priorityAnimations = {

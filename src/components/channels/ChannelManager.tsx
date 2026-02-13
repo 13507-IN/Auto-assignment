@@ -1,12 +1,11 @@
+'use client';
 import React, { useEffect, useState } from 'react';
 import { ChannelHierarchy, User } from '@/types/channel';
 import { getChannelHierarchy, createChannel } from '@/lib/channels';
 import { useSession } from 'next-auth/react';
-
 interface ChannelManagerProps {
     collegeId: string;
 }
-
 export const ChannelManager: React.FC<ChannelManagerProps> = ({ collegeId }) => {
     const { data: session } = useSession();
     const [hierarchy, setHierarchy] = useState<ChannelHierarchy | null>(null);
@@ -38,7 +37,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ collegeId }) => 
                 ...data,
                 college_id: collegeId,
             });
-            // Refresh hierarchy after creating channel
+            
             const updatedHierarchy = await getChannelHierarchy(collegeId);
             setHierarchy(updatedHierarchy);
         } catch (err) {

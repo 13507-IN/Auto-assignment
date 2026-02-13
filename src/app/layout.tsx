@@ -1,8 +1,12 @@
-import { Inter } from 'next/font/google';
+import { Armata } from 'next/font/google';
 import { Providers } from '@/providers';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const armata = Armata({ 
+  subsets: ['latin'], 
+  weight: '400',
+  variable: '--font-armata',
+});
 
 export const metadata = {
   title: 'AI Study Assistant',
@@ -16,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${armata.className} ${armata.variable}`}>
         <Providers>
           {children}
         </Providers>
