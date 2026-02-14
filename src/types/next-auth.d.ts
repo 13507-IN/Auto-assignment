@@ -1,4 +1,5 @@
 import 'next-auth';
+import 'next-auth/jwt';
 
 declare module 'next-auth' {
     interface Session {
@@ -9,5 +10,17 @@ declare module 'next-auth' {
             image?: string | null;
             role?: 'admin' | 'student' | 'teacher';
         };
+        accessToken?: string;
+        error?: string;
     }
-} 
+}
+
+declare module 'next-auth/jwt' {
+    interface JWT {
+        accessToken?: string;
+        refreshToken?: string;
+        accessTokenExpires?: number;
+        role?: string;
+        error?: string;
+    }
+}
