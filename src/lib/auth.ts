@@ -41,6 +41,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: 'jwt',
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
@@ -58,28 +61,46 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  events: {
+    async signIn({ user, account }) {
+      if (account?.provider !== 'google') {
+        return;
+      }
+
+      const userId = account.providerAccountId ?? user.id;
+      if (!userId || !user.email) {
+        return;
+      }
+
+      try {
+        await convexHttp.mutation(api.profiles.createIfMissing, {
+          user_id: userId,
+          email: user.email,
+          full_name: user.name ?? undefined,
+          role: 'student',
+        });
+      } catch (error) {
+        // Keep sign-in successful even if profile sync is temporarily unavailable.
+        console.error('Profile sync failed in signIn event:', error);
+      }
+    },
+  },
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google') {
-        try {
-          await convexHttp.mutation(api.profiles.createIfMissing, {
-            user_id: user.id,
-            email: user.email ?? '',
-            full_name: user.name ?? undefined,
-            role: 'student',
-          });
-
-          return true;
-        } catch (error) {
-          console.error('Error during sign in:', error);
-          return false;
-        }
+      if (account?.provider !== 'google') {
+        return false;
       }
-      return false;
+
+      const userId = account.providerAccountId ?? user.id;
+      if (!userId) {
+        return false;
+      }
+
+      return true;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub ?? session.user.id;
+        session.user.id = (token.sub as string | undefined) ?? session.user.id;
         session.user.role = token.role as string | undefined;
       }
 
@@ -89,29 +110,27 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async jwt({ token, user, account }) {
-      if (account && user) {
+      if (account) {
+        const userId =
+          account.providerAccountId ??
+          (typeof user?.id === 'string' ? user.id : undefined) ??
+          (typeof token.sub === 'string' ? token.sub : undefined);
+
+        if (userId) {
+          token.sub = userId;
+        }
+
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token ?? token.refreshToken;
         token.accessTokenExpires = account.expires_at
           ? account.expires_at * 1000
           : Date.now() + 60 * 60 * 1000;
-
-        const profile = await convexHttp.query(api.profiles.getByUserId, {
-          user_id: user.id,
-        });
-        token.role = profile?.role ?? 'student';
+        token.role = (token.role as string | undefined) ?? 'student';
 
         return token;
       }
 
-      if (!token.role && token.sub) {
-        const profile = await convexHttp.query(api.profiles.getByUserId, {
-          user_id: token.sub,
-        });
-        if (profile?.role) {
-          token.role = profile.role;
-        }
-      }
+      token.role = (token.role as string | undefined) ?? 'student';
 
       if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
         return token;
@@ -119,10 +138,20 @@ export const authOptions: NextAuthOptions = {
 
       return await refreshAccessToken(token);
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+      return `${baseUrl}/classroom`;
+    },
   },
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/error',
+    error: '/auth/signin',
   },
+  debug: process.env.NODE_ENV === 'development',
   secret: process.env.NEXTAUTH_SECRET,
 };

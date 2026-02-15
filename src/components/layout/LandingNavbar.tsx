@@ -9,8 +9,8 @@ export function LandingNavbar() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border transition-all duration-300">
-      <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
+    <nav className="fixed top-0 w-full z-50 bg-background/85 backdrop-blur-lg border-b border-border/70 transition-all duration-300">
+      <div className="section-shell h-20 flex items-center justify-between">
         <div className="flex items-center gap-2">
            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
              <span className="text-white font-bold text-lg">S</span>
@@ -38,7 +38,7 @@ export function LandingNavbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="text-muted-foreground mr-2"
+                className="text-muted-foreground mr-1 relative"
             >
                 <span className="sr-only">Toggle theme</span>
                 <FiSun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

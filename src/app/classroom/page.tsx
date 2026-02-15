@@ -33,6 +33,9 @@ export default function ClassroomWorkflowPage() {
   const [error, setError] = useState<string | null>(null);
   const [helpById, setHelpById] = useState<Record<string, string>>({});
   const [helpLoadingId, setHelpLoadingId] = useState<string | null>(null);
+  const [answerById, setAnswerById] = useState<Record<string, string>>({});
+  const [submitLoadingId, setSubmitLoadingId] = useState<string | null>(null);
+  const [submitSuccessById, setSubmitSuccessById] = useState<Record<string, boolean>>({});
 
   const handleFetchAssignments = async () => {
     if (!classCode.trim()) {
@@ -99,6 +102,42 @@ export default function ClassroomWorkflowPage() {
       setError('Failed to generate help.');
     } finally {
       setHelpLoadingId(null);
+    }
+  };
+
+  const handleSubmitAssignment = async (assignment: ClassroomAssignment) => {
+    const answer = answerById[assignment.id]?.trim() ?? '';
+    if (!answer) {
+      setError('Add your answer before submitting.');
+      return;
+    }
+
+    setSubmitLoadingId(assignment.id);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/classroom/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: assignment.course_id,
+          courseWorkId: assignment.id,
+          submissionText: answer,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data?.error || 'Failed to submit assignment.');
+        return;
+      }
+
+      setSubmitSuccessById((prev) => ({ ...prev, [assignment.id]: true }));
+    } catch (err) {
+      console.error(err);
+      setError('Failed to submit assignment.');
+    } finally {
+      setSubmitLoadingId(null);
     }
   };
 
@@ -212,6 +251,42 @@ export default function ClassroomWorkflowPage() {
                         </div>
                         {assignment.description && (
                           <p className="text-sm text-muted-foreground">{assignment.description}</p>
+                        )}
+                        {assignment.work_type === 'SHORT_ANSWER_QUESTION' && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                              Your answer
+                            </label>
+                            <textarea
+                              value={answerById[assignment.id] ?? ''}
+                              onChange={(event) =>
+                                setAnswerById((prev) => ({
+                                  ...prev,
+                                  [assignment.id]: event.target.value,
+                                }))
+                              }
+                              rows={4}
+                              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                              placeholder="Paste your answer here before submitting."
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSubmitAssignment(assignment)}
+                                disabled={submitLoadingId === assignment.id}
+                              >
+                                {submitLoadingId === assignment.id ? 'Submitting...' : 'Submit to Classroom'}
+                              </Button>
+                              {submitSuccessById[assignment.id] && (
+                                <span className="text-sm text-green-600">
+                                  Submitted successfully.
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              This sends your text answer and marks the assignment as turned in.
+                            </p>
+                          </div>
                         )}
                         {helpById[assignment.id] && (
                           <div className="rounded-md bg-muted/40 p-3 text-sm whitespace-pre-wrap">
